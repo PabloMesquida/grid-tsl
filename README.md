@@ -18,14 +18,6 @@ etc.) can be tweaked in real time using
 
 ------------------------------------------------------------------------
 
-## 🚀 Usage
-
-\`\`\`bash npm install three lil-gui npm run dev \`\`\`
-
-Open in your browser and use the GUI to tweak parameters live.
-
-------------------------------------------------------------------------
-
 ## 📖 References
 
 -   Bruno Simon Devlog (YouTube): [Procedural Grid with
