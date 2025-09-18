@@ -10,5 +10,9 @@
   },
   "devDependencies": {
     "vite": "^7.1.6"
+  },
+  "dependencies": {
+    "lil-gui": "^0.20.0",
+    "three": "^0.180.0"
   }
 }
