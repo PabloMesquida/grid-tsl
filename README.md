@@ -21,7 +21,7 @@ etc.) can be tweaked in real time using
 ## 📖 References
 
 -   Bruno Simon Devlog (YouTube): [Procedural Grid with
-    TSL](https://www.youtube.com/watch?v=OBZtVz6IM18&t=594s)\
+    TSL](https://www.youtube.com/watch?v=OBZtVz6IM18&t=594s)
 -   Ben Golus -- [The Best Darn Grid Shader
     (Yet)](https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8)
 
