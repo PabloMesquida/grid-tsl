@@ -1,7 +1,7 @@
 # Grid Shader with Three.js TSL
 
 Procedural **grid + plus-pattern shader** built with [Three.js WebGPU +
-TSL](https://threejs.org/docs/#manual/en/introduction/TSL).\
+TSL](https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language).\
 All parameters (cell size, line width, colors, opacity, background,
 etc.) can be tweaked in real time using
 [lil-gui](https://github.com/georgealways/lil-gui).
@@ -25,8 +25,3 @@ etc.) can be tweaked in real time using
 -   Ben Golus -- [The Best Darn Grid Shader
     (Yet)](https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8)
 
-------------------------------------------------------------------------
-
-## 📜 License
-
-MIT
