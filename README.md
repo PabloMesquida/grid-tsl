@@ -1,4 +1,4 @@
-# Grid Shader with Three.js TSL
+# Grid Material with Three.js TSL
 
 Procedural **grid + plus-pattern shader** built with [Three.js WebGPU +
 TSL](https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language).\
