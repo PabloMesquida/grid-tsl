@@ -8,7 +8,7 @@ etc.) can be tweaked in real time using
 
 ---
 
-## ✨ Features
+## Features
 
 - Two layered grids (A & B) + a plus-pattern layer (C).
 - Adjustable size, thickness, colors and background.
@@ -18,7 +18,7 @@ etc.) can be tweaked in real time using
 
 ---
 
-## 🎨 Presets
+## Presets
 
 Available presets for the material:
 
@@ -34,7 +34,7 @@ Available presets for the material:
 > ⚠️ Presets cannot be modified from the GUI. You can only switch between them.  
 > To change individual parameters, you must edit the material directly in the code.
 
-## ⚙️ Parameter customization (code only)
+## Parameter customization (code only)
 
 Although presets are fixed, you can still customize **any material parameter directly in your code**.
 
@@ -73,7 +73,7 @@ mat.gridThickness = 0.05
 
 ---
 
-## 📖 References
+## References
 
 - Bruno Simon Devlog (YouTube): [Procedural Grid with TSL](https://www.youtube.com/watch?v=OBZtVz6IM18&t=594s)
 - Ben Golus — [The Best Darn Grid Shader (Yet)](https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8)
