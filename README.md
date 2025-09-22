@@ -1,10 +1,7 @@
 # Grid Material with Three.js TSL
 
 Procedural **grid + plus-pattern shader** built with [Three.js WebGPU +
-TSL](https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language).\
-All parameters (cell size, line width, colors, opacity, background,
-etc.) can be tweaked in real time using
-[lil-gui](https://github.com/georgealways/lil-gui).
+TSL](https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language)
 
 ---
 
@@ -34,7 +31,7 @@ Available presets for the material:
 > ⚠️ Presets cannot be modified from the GUI. You can only switch between them.  
 > To change individual parameters, you must edit the material directly in the code.
 
-## Parameter customization (code only)
+## Parameter customization
 
 Although presets are fixed, you can still customize **any material parameter directly in your code**.
 
@@ -70,6 +67,15 @@ mat.gridThickness = 0.05
 
 
 > You can experiment with any property exposed by `GridNodeMaterial` to fine-tune the visuals.
+
+
+## Triplanar option for geometries
+
+ **Triplanar projection (GridTriplanarNodeMaterial)** — creates
+   projected UVs from world position along the three axes (X/Y/Z) and
+   blends them using the surface normal. Great for procedurally
+   texturing objects without reliable UVs (rocks, terrains, primitives).
+   It's slightly heavier in shader cost but removes seams.
 
 ---
 
