@@ -1,55 +1,61 @@
 # Grid TSL v2
 
-Material de rejilla procedural para suelos, hecho con **Three.js WebGPU + TSL**: líneas principales,
-líneas secundarias y cruces, con un filtrado pensado para evitar moiré y parpadeo incluso a lo lejos o en
-ángulos rasantes. Todos los colores y medidas son configurables.
+Procedural floor grid material built with **Three.js WebGPU + TSL**: primary lines, secondary lines and
+crosses, with filtering designed to avoid moiré and shimmering, even far away or at grazing angles.
+Every color and size is configurable.
 
-Requiere un navegador con WebGPU.
+Requires a browser with WebGPU support.
 
-## Novedades respecto a v1
+## What's new in v2
 
-La versión 2 es una reescritura desde cero. La v1 sigue disponible en la etiqueta
-[`v1.0.0`](https://github.com/PabloMesquida/grid-tsl/tree/v1.0.0).
+Version 2 is a rewrite from scratch. v1 is still available under the
+[`v1.0.0`](https://github.com/PabloMesquida/grid-tsl/tree/v1.0.0) tag.
 
-- **Sin moiré en las cruces**: en v1 las cruces no tenían filtrado a distancia; ahora todas las capas
-  convergen a un tono uniforme cuando sus detalles son más pequeños que un píxel.
-- **Un solo material para suelos** (`GridMaterial`): se eliminan las variantes triplanar y por UV y los
-  presets fijos. Todos los parámetros se editan en vivo.
-- **Fundido circular** opcional para integrar el suelo con el entorno.
-- **Paquete reutilizable**: se instala con npm y se importa como `grid-tsl`.
-- **Panel de debug** que copia los parámetros actuales como código JS o JSON.
-- **Shader más barato**: derivadas calculadas una sola vez, valores derivados precalculados en CPU y
-  fundido que solo se compila si está activo.
+- **No moiré on the crosses**: in v1 the crosses had no distance filtering; now every layer converges to a
+  flat tone once its details get smaller than a pixel.
+- **A single floor material** (`GridMaterial`): the triplanar and UV variants and the fixed presets are
+  gone. Every parameter can be edited live.
+- **Optional circular fade** to blend the floor into its surroundings.
+- **Reusable package**: install it with npm and import it as `grid-tsl`.
+- **Debug panel** in the three.js Inspector that copies the current parameters as JS or JSON.
+- **Cheaper shader**: derivatives computed once, derived values precomputed on the CPU, and a fade that
+  is only compiled in when enabled.
 
-> **Cambios que rompen compatibilidad**: los nombres de los parámetros cambian (`cellSizeA` →
-> `primarySpacing`, `lineWidthA` → `primaryThickness`, `colorA` → `primaryColor`, `bgColor` →
-> `backgroundColor`, etc.) y ya no existen `fromPreset`, `GridTriplanarNodeMaterial` ni
-> `GridGeoUVNodeMaterial`.
+> **Breaking changes**: parameters were renamed (`cellSizeA` → `primarySpacing`, `lineWidthA` →
+> `primaryThickness`, `colorA` → `primaryColor`, `bgColor` → `backgroundColor`, etc.), and `fromPreset`,
+> `GridTriplanarNodeMaterial` and `GridGeoUVNodeMaterial` no longer exist.
 
-## Instalación en otro proyecto
+### Changelog
 
-`three` (≥ 0.180) es *peer dependency*: el paquete usa la copia de three de tu proyecto.
-`lil-gui` solo hace falta si usas el panel de debug.
+- **2.1.0**: the debug panel uses the built-in three.js Inspector instead of lil-gui, so lil-gui is no
+  longer needed. `createGridDebug` now takes the renderer: `createGridDebug(material, { renderer })`.
+- **2.0.0**: rewrite.
+
+## Installing in another project
+
+`three` (≥ 0.180) is a *peer dependency*: the package uses your project's copy of three.
+There are no other dependencies: the debug panel uses the Inspector that ships with three
+(`three/addons/inspector`).
 
 ```bash
-npm install github:PabloMesquida/grid-tsl#v2.0.0
+npm install github:PabloMesquida/grid-tsl#v2.1.0
 ```
 
-O desde una copia local del repositorio, generando un paquete:
+Or from a local copy of the repository, by packing it:
 
 ```bash
 npm pack
 ```
 
 ```bash
-npm install ruta/a/grid-tsl-2.0.0.tgz
+npm install path/to/grid-tsl-2.1.0.tgz
 ```
 
-> Evita `npm link` o `file:../grid`: crean un enlace y el paquete acabaría usando su propia copia de
-> three (dos instancias de three rompen TSL). Si aun así lo usas, añade `resolve: { dedupe: ['three'] }`
-> a tu `vite.config.js`.
+> Avoid `npm link` or `file:../grid`: they create a symlink and the package would end up using its own
+> copy of three (two three instances break TSL). If you use them anyway, add
+> `resolve: { dedupe: ['three'] }` to your `vite.config.js`.
 
-## Uso
+## Usage
 
 ```js
 import { GridMaterial } from 'grid-tsl'
@@ -62,47 +68,51 @@ const material = new GridMaterial({
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), material)
 floor.rotation.x = -Math.PI / 2
 
-material.crossSize = 0.3        // todos los parámetros se pueden cambiar en vivo
+material.crossSize = 0.3        // every parameter can be changed live
 material.fade = false
 ```
 
-La rejilla se proyecta en el plano XZ del mundo, así que solo sirve para superficies horizontales.
+The grid is projected onto the world XZ plane, so it only works on horizontal surfaces.
 
-## Modo debug: editar y exportar parámetros
+## Debug mode: edit and export parameters
 
-`grid-tsl/debug` crea un panel lil-gui que edita el material en vivo. Su carpeta **Parámetros** tiene:
+`grid-tsl/debug` adds a panel to the **Parameters** tab of the
+[three.js Inspector](https://github.com/mrdoob/three.js/tree/dev/examples/jsm/inspector), the tools
+panel that comes with `WebGPURenderer` (performance, memory, console…). The panel edits the material
+live, and its **Parámetros** folder has:
 
-- **Copiar como JS**: copia `new GridMaterial({ ... })` con los valores actuales, listo para pegar.
-- **Copiar como JSON**: el mismo objeto en JSON (para guardarlo en un archivo de config).
-- **Mostrar en consola** y **Restablecer**.
+- **Copiar como JS**: copies `new GridMaterial({ ... })` with the current values, ready to paste.
+- **Copiar como JSON**: the same object as JSON (to keep it in a config file).
+- **Mostrar en consola** (log to console) and **Restablecer** (reset to defaults).
 
-Impórtalo de forma dinámica para que lil-gui no entre en el bundle de producción:
+Import it dynamically so the Inspector stays out of your production bundle:
 
 ```js
 const debug = location.hash === '#debug'
 
 if (debug) {
   const { createGridDebug } = await import('grid-tsl/debug')
-  createGridDebug(material)
+  createGridDebug(material, { renderer })
 }
 ```
 
-Opciones de `createGridDebug(material, options)`:
+`createGridDebug(material, options)` options:
 
-| Opción | Descripción |
+| Option | Description |
 |---|---|
-| `parent` | GUI de lil-gui existente; el panel se añade como carpeta dentro de ella |
-| `title` | Título del panel (por defecto `'Grid'`) |
-| `onChange(params)` | Se llama tras cada cambio con los parámetros actuales (útil para guardarlos) |
+| `renderer` | The `WebGPURenderer`. If `renderer.inspector` is not an `Inspector` yet, one is assigned |
+| `parent` | An existing parameters group (e.g. `renderer.inspector.createParameters('Scene')`); the panel is added as a folder inside it. Replaces `renderer` |
+| `title` | Panel title (defaults to `'Grid'`) |
+| `onChange(params)` | Called after every change with the current parameters (useful to save them) |
 
-Devuelve `{ gui, refresh, dispose }`. Llama a `refresh()` si cambias el material desde código con el
-panel abierto.
+Returns `{ group, refresh, dispose }`; `group` is the Inspector parameters group, in case you want to add
+your own controls. Call `refresh()` if you change the material from code while the panel is open.
 
-Fuera del panel también puedes leer y aplicar los parámetros:
+You can also read and apply the parameters without the panel:
 
 ```js
-const params = material.getParameters()   // objeto plano, serializable a JSON
-material.setParameters(params)            // o new GridMaterial(params)
+const params = material.getParameters()   // plain object, JSON-serializable
+material.setParameters(params)            // or new GridMaterial(params)
 ```
 
 ## Demo
@@ -115,55 +125,56 @@ npm install
 npm run dev
 ```
 
-En desarrollo el panel siempre está visible; en el build (`npm run build`), solo con `#debug` en la URL.
+In development the Inspector is always on; in the build (`npm run build`), only with `#debug` in the URL.
+The controls live in the Inspector's **Parameters** tab.
 
-## Parámetros
+## Parameters
 
-Todas las distancias están en unidades de mundo. Los colores aceptan `'#hex'`, número o `THREE.Color`.
+All distances are in world units. Colors accept `'#hex'`, a number or a `THREE.Color`.
 
-| Parámetro | Descripción |
+| Parameter | Description |
 |---|---|
-| `backgroundColor` | Color del fondo |
-| `primaryColor` / `primarySpacing` / `primaryThickness` | Líneas principales: color, separación, grosor |
-| `secondaryColor` / `secondarySpacing` / `secondaryThickness` | Líneas secundarias: color, separación, grosor |
-| `crossColor` / `crossSpacing` / `crossSize` / `crossThickness` | Cruces (en el centro de cada celda): color, separación, tamaño de punta a punta, grosor |
-| `fade` | Activa el fundido circular (alpha) |
-| `fadeRadius` / `fadeSoftness` | Radio donde el material desaparece del todo; fracción del radio que ocupa la transición (0–1) |
-| `fadeCenter` | Centro del fundido en coordenadas XZ de mundo (`Vector2`, `{ x, y }` o `[x, z]`) |
+| `backgroundColor` | Background color |
+| `primaryColor` / `primarySpacing` / `primaryThickness` | Primary lines: color, spacing, thickness |
+| `secondaryColor` / `secondarySpacing` / `secondaryThickness` | Secondary lines: color, spacing, thickness |
+| `crossColor` / `crossSpacing` / `crossSize` / `crossThickness` | Crosses (centered in each cell): color, spacing, tip-to-tip size, thickness |
+| `fade` | Enables the circular fade (alpha) |
+| `fadeRadius` / `fadeSoftness` | Radius where the material fully disappears; fraction of the radius taken by the transition (0–1) |
+| `fadeCenter` | Fade center in world XZ coordinates (`Vector2`, `{ x, y }` or `[x, z]`) |
 
-Un grosor de `0` desactiva la capa. Orden de dibujo: fondo → secundarias → cruces → principales.
+A thickness of `0` disables that layer. Draw order: background → secondary → crosses → primary.
 
-## Antialiasing y filtrado
+## Antialiasing and filtering
 
-- **Huella anisotrópica**: las derivadas de la posición se calculan una sola vez y por eje, de modo que en
-  ángulos rasantes cada dirección se filtra según lo que realmente ocupa en pantalla.
-- **Líneas** ([pristine grid de Ben Golus](https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8)):
-  el ancho dibujado nunca baja de 1 píxel pero su intensidad se reduce en proporción, así las líneas finas
-  no parpadean. Cuando la celda ocupa menos de ~2 píxeles, la capa converge a su cobertura media: en la
-  distancia se ve un tono uniforme en lugar de moiré.
-- **Cruces**: cada brazo es una línea filtrada multiplicada por una banda con filtro de caja analítico
-  (conserva la energía). Grosor y longitud convergen también a su media, cosa que v1 no hacía.
-- **Composición** en espacio lineal con coberturas, sin recortes de color.
+- **Anisotropic footprint**: position derivatives are computed once and per axis, so at grazing angles
+  each direction is filtered according to what it actually covers on screen.
+- **Lines** ([Ben Golus' pristine grid](https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8)):
+  the drawn width never drops below 1 pixel, but its intensity is scaled down to match, so thin lines don't
+  flicker. Once a cell is smaller than ~2 pixels, the layer converges to its average coverage: in the
+  distance you see a flat tone instead of moiré.
+- **Crosses**: each arm is a filtered line multiplied by a band with an analytic box filter
+  (energy-preserving). Thickness and length also converge to their average, which v1 didn't do.
+- **Compositing** in linear space using coverage, with no color clamping.
 
-## Rendimiento
+## Performance
 
-- Los valores derivados (1/separación, grosor y tamaño relativos a la celda, radios del fundido) se calculan
-  en CPU al cambiar un parámetro; el shader solo multiplica.
-- El fundido es un interruptor de compilación: desactivado, el material es opaco y no incluye ese código
-  ni el blending.
-- Sin ramas, sin texturas y sin variantes triplanares.
+- Derived values (1/spacing, thickness and size relative to the cell, fade radii) are computed on the CPU
+  when a parameter changes; the shader only multiplies.
+- The fade is a compile-time switch: when disabled, the material is opaque and contains neither that code
+  nor blending.
+- No branches, no textures and no triplanar variants.
 
-## Estructura
+## Structure
 
-| Import | Archivo | Contenido |
+| Import | File | Contents |
 |---|---|---|
 | `grid-tsl` | `src/index.js` | `GridMaterial`, `GRID_DEFAULTS` |
-| `grid-tsl/debug` | `src/debug.js` | `createGridDebug` (panel lil-gui + exportar) |
-| `grid-tsl/nodes` | `src/gridNodes.js` | Funciones TSL sueltas (`pixelFootprint`, `gridLines`, `filteredBand`, `crossPattern`, `radialFade`) para montar tu propio material |
+| `grid-tsl/debug` | `src/debug.js` | `createGridDebug` (Inspector panel + export) |
+| `grid-tsl/nodes` | `src/gridNodes.js` | Standalone TSL functions (`pixelFootprint`, `gridLines`, `filteredBand`, `crossPattern`, `radialFade`) to build your own material |
 
-`demo/` es la escena de prueba; no forma parte del paquete.
+`demo/` is the test scene; it is not part of the package.
 
-## Referencias
+## References
 
 - Ben Golus — [The Best Darn Grid Shader (Yet)](https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8)
 - Inigo Quilez — [Filtering procedurals](https://iquilezles.org/articles/filtering/)

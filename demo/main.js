@@ -45,13 +45,11 @@ floor.rotation.x = -Math.PI / 2
 scene.add(floor)
 
 if (debug) {
-  // Import dinámico: lil-gui y el panel no se cargan fuera del modo debug
+  // Import dinámico: el Inspector y el panel no se cargan fuera del modo debug
   const { createGridDebug } = await import('grid-tsl/debug')
-  const { gui } = createGridDebug(material)
+  createGridDebug(material, { renderer })
 
-  const sceneParams = { background: `#${scene.background.getHexString()}` }
-  gui.addFolder('Escena').addColor(sceneParams, 'background').name('fondo')
-    .onChange((v) => scene.background.set(v))
+  renderer.inspector.createParameters('Escena').addColor(scene, 'background').name('fondo')
 }
 
 window.addEventListener('resize', () => {
