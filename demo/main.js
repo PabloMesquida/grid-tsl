@@ -49,7 +49,7 @@ if (debug) {
   const { createGridDebug } = await import('grid-tsl/debug')
   createGridDebug(material, { renderer })
 
-  renderer.inspector.createParameters('Escena').addColor(scene, 'background').name('fondo')
+  renderer.inspector.createParameters('Scene').addColor(scene, 'background').name('background')
 }
 
 window.addEventListener('resize', () => {

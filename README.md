@@ -27,6 +27,7 @@ Version 2 is a rewrite from scratch. v1 is still available under the
 
 ### Changelog
 
+- **2.1.1**: debug panel labels in English; the export buttons now live in an **Export** folder.
 - **2.1.0**: the debug panel uses the built-in three.js Inspector instead of lil-gui, so lil-gui is no
   longer needed. `createGridDebug` now takes the renderer: `createGridDebug(material, { renderer })`.
 - **2.0.0**: rewrite.
@@ -38,7 +39,7 @@ There are no other dependencies: the debug panel uses the Inspector that ships w
 (`three/addons/inspector`).
 
 ```bash
-npm install github:PabloMesquida/grid-tsl#v2.1.0
+npm install github:PabloMesquida/grid-tsl#v2.1.1
 ```
 
 Or from a local copy of the repository, by packing it:
@@ -48,7 +49,7 @@ npm pack
 ```
 
 ```bash
-npm install path/to/grid-tsl-2.1.0.tgz
+npm install path/to/grid-tsl-2.1.1.tgz
 ```
 
 > Avoid `npm link` or `file:../grid`: they create a symlink and the package would end up using its own
@@ -79,11 +80,11 @@ The grid is projected onto the world XZ plane, so it only works on horizontal su
 `grid-tsl/debug` adds a panel to the **Parameters** tab of the
 [three.js Inspector](https://github.com/mrdoob/three.js/tree/dev/examples/jsm/inspector), the tools
 panel that comes with `WebGPURenderer` (performance, memory, console…). The panel edits the material
-live, and its **Parámetros** folder has:
+live, and its **Export** folder has:
 
-- **Copiar como JS**: copies `new GridMaterial({ ... })` with the current values, ready to paste.
-- **Copiar como JSON**: the same object as JSON (to keep it in a config file).
-- **Mostrar en consola** (log to console) and **Restablecer** (reset to defaults).
+- **Copy as JS**: copies `new GridMaterial({ ... })` with the current values, ready to paste.
+- **Copy as JSON**: the same object as JSON (to keep it in a config file).
+- **Log to console** and **Reset** (back to the defaults).
 
 Import it dynamically so the Inspector stays out of your production bundle:
 

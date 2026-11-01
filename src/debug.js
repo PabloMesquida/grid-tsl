@@ -29,7 +29,7 @@ export function createGridDebug(material, { renderer, parent, title = 'Grid', on
   if (parent) {
     group = parent.addFolder(title)
   } else {
-    if (!renderer) throw new Error('createGridDebug: indica `renderer` o `parent`')
+    if (!renderer) throw new Error('createGridDebug: pass `renderer` or `parent`')
     if (typeof renderer.inspector.createParameters !== 'function') renderer.inspector = new Inspector()
     group = renderer.inspector.createParameters(title)
   }
@@ -46,27 +46,27 @@ export function createGridDebug(material, { renderer, parent, title = 'Grid', on
   const number = (folder, key, name, min, max, step) =>
     bind(folder.add(material, key, min, max, step).name(name), key)
 
-  const primary = group.addFolder('Líneas principales')
+  const primary = group.addFolder('Primary lines')
   color(primary, 'primaryColor')
-  number(primary, 'primarySpacing', 'separación', 0.5, 50, 0.5)
-  number(primary, 'primaryThickness', 'grosor', 0, 0.5, 0.001)
+  number(primary, 'primarySpacing', 'spacing', 0.5, 50, 0.5)
+  number(primary, 'primaryThickness', 'thickness', 0, 0.5, 0.001)
 
-  const secondary = group.addFolder('Líneas secundarias')
+  const secondary = group.addFolder('Secondary lines')
   color(secondary, 'secondaryColor')
-  number(secondary, 'secondarySpacing', 'separación', 0.1, 10, 0.1)
-  number(secondary, 'secondaryThickness', 'grosor', 0, 0.2, 0.001)
+  number(secondary, 'secondarySpacing', 'spacing', 0.1, 10, 0.1)
+  number(secondary, 'secondaryThickness', 'thickness', 0, 0.2, 0.001)
 
-  const cross = group.addFolder('Cruces')
+  const cross = group.addFolder('Crosses')
   color(cross, 'crossColor')
-  number(cross, 'crossSpacing', 'separación', 0.1, 10, 0.1)
-  number(cross, 'crossSize', 'tamaño', 0, 2, 0.01)
-  number(cross, 'crossThickness', 'grosor', 0, 0.2, 0.001)
+  number(cross, 'crossSpacing', 'spacing', 0.1, 10, 0.1)
+  number(cross, 'crossSize', 'size', 0, 2, 0.01)
+  number(cross, 'crossThickness', 'thickness', 0, 0.2, 0.001)
 
-  const base = group.addFolder('Fondo y fundido')
-  color(base, 'backgroundColor', 'fondo')
-  bind(base.add(material, 'fade').name('fundido circular'), 'fade')
-  number(base, 'fadeRadius', 'radio', 1, 500, 1)
-  number(base, 'fadeSoftness', 'suavidad', 0, 1, 0.01)
+  const base = group.addFolder('Background & fade')
+  color(base, 'backgroundColor', 'background')
+  bind(base.add(material, 'fade').name('circular fade'), 'fade')
+  number(base, 'fadeRadius', 'radius', 1, 500, 1)
+  number(base, 'fadeSoftness', 'softness', 0, 1, 0.01)
 
   // --- Exportar ---------------------------------------------------------------------
   const flash = (button, label, text) => {
@@ -76,15 +76,15 @@ export function createGridDebug(material, { renderer, parent, title = 'Grid', on
   const copy = (text, button, label) => {
     const fallback = () => {
       console.log(text)
-      flash(button, label, 'Ver consola')
+      flash(button, label, 'See console')
     }
     if (!navigator.clipboard) return fallback()
-    navigator.clipboard.writeText(text).then(() => flash(button, label, '¡Copiado!'), fallback)
+    navigator.clipboard.writeText(text).then(() => flash(button, label, 'Copied!'), fallback)
   }
 
   const actions = {
-    copyJS: () => copy(toJS(material.getParameters()), jsButton, 'Copiar como JS'),
-    copyJSON: () => copy(toJSON(material.getParameters()), jsonButton, 'Copiar como JSON'),
+    copyJS: () => copy(toJS(material.getParameters()), jsButton, 'Copy as JS'),
+    copyJSON: () => copy(toJSON(material.getParameters()), jsonButton, 'Copy as JSON'),
     log: () => console.log(material.getParameters()),
     reset: () => {
       material.setParameters(GRID_DEFAULTS)
@@ -92,11 +92,11 @@ export function createGridDebug(material, { renderer, parent, title = 'Grid', on
     },
   }
 
-  const output = group.addFolder('Parámetros')
-  const jsButton = output.add(actions, 'copyJS').name('Copiar como JS')
-  const jsonButton = output.add(actions, 'copyJSON').name('Copiar como JSON')
-  output.add(actions, 'log').name('Mostrar en consola')
-  output.add(actions, 'reset').name('Restablecer')
+  const output = group.addFolder('Export')
+  const jsButton = output.add(actions, 'copyJS').name('Copy as JS')
+  const jsonButton = output.add(actions, 'copyJSON').name('Copy as JSON')
+  output.add(actions, 'log').name('Log to console')
+  output.add(actions, 'reset').name('Reset')
 
   /** Sincroniza el panel si el material se modifica desde código. */
   function refresh() {
