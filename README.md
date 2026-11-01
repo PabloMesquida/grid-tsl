@@ -1,6 +1,6 @@
 # Grid TSL v2
 
-Procedural floor grid material built with **Three.js WebGPU + TSL**: primary lines, secondary lines and
+Procedural grid material for floors and boxes, built with **Three.js WebGPU + TSL**: primary lines, secondary lines and
 crosses, with filtering designed to avoid moiré and shimmering, even far away or at grazing angles.
 Every color and size is configurable.
 
@@ -27,6 +27,7 @@ Version 2 is a rewrite from scratch. v1 is still available under the
 
 ### Changelog
 
+- **2.2.0**: `projection: 'box'` to use the grid on cubes, walls and other boxy meshes. The demo has a box (hidden by default, toggle it in Scene → show box).
 - **2.1.1**: debug panel labels in English; the export buttons now live in an **Export** folder.
 - **2.1.0**: the debug panel uses the built-in three.js Inspector instead of lil-gui, so lil-gui is no
   longer needed. `createGridDebug` now takes the renderer: `createGridDebug(material, { renderer })`.
@@ -39,7 +40,7 @@ There are no other dependencies: the debug panel uses the Inspector that ships w
 (`three/addons/inspector`).
 
 ```bash
-npm install github:PabloMesquida/grid-tsl#v2.1.1
+npm install github:PabloMesquida/grid-tsl#v2.2.0
 ```
 
 Or from a local copy of the repository, by packing it:
@@ -49,7 +50,7 @@ npm pack
 ```
 
 ```bash
-npm install path/to/grid-tsl-2.1.1.tgz
+npm install path/to/grid-tsl-2.2.0.tgz
 ```
 
 > Avoid `npm link` or `file:../grid`: they create a symlink and the package would end up using its own
@@ -73,7 +74,25 @@ material.crossSize = 0.3        // every parameter can be changed live
 material.fade = false
 ```
 
-The grid is projected onto the world XZ plane, so it only works on horizontal surfaces.
+### Projection
+
+| `projection` | How the grid is mapped | Use it for |
+|---|---|---|
+| `'floor'` (default) | World XZ plane. The grid stays fixed in the world | Floors and other horizontal surfaces |
+| `'box'` | Each face uses the plane of its dominant normal axis (±Y → XZ, ±X → ZY, ±Z → XY), in object space | Cubes, walls, steps, any boxy mesh |
+
+```js
+const box = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new GridMaterial({ projection: 'box' }))
+```
+
+With `'box'` the grid moves and rotates with the object, but spacing is still in world units (the
+object's scale is compensated, so a stretched box keeps square cells). Lines start at the object's
+origin: on a 2×2×2 box with spacing 1, there are lines on the edges and through the middle of each face.
+Planes are picked, not blended (no triplanar), so it costs the same as `'floor'`; on curved meshes you
+will see seams where the dominant axis changes. The fade is always measured in world XZ, so floor and
+boxes fade out together.
+
+Changing `projection` recompiles the material.
 
 ## Debug mode: edit and export parameters
 
@@ -135,6 +154,7 @@ All distances are in world units. Colors accept `'#hex'`, a number or a `THREE.C
 
 | Parameter | Description |
 |---|---|
+| `projection` | `'floor'` or `'box'` (see [Projection](#projection)) |
 | `backgroundColor` | Background color |
 | `primaryColor` / `primarySpacing` / `primaryThickness` | Primary lines: color, spacing, thickness |
 | `secondaryColor` / `secondarySpacing` / `secondaryThickness` | Secondary lines: color, spacing, thickness |
@@ -155,6 +175,8 @@ A thickness of `0` disables that layer. Draw order: background → secondary →
   distance you see a flat tone instead of moiré.
 - **Crosses**: each arm is a filtered line multiplied by a band with an analytic box filter
   (energy-preserving). Thickness and length also converge to their average, which v1 didn't do.
+- **Box projection**: derivatives are taken on the continuous 3D position and projected with the same
+  plane choice, so the footprint stays correct right up to the edges.
 - **Compositing** in linear space using coverage, with no color clamping.
 
 ## Performance
@@ -163,7 +185,7 @@ A thickness of `0` disables that layer. Draw order: background → secondary →
   when a parameter changes; the shader only multiplies.
 - The fade is a compile-time switch: when disabled, the material is opaque and contains neither that code
   nor blending.
-- No branches, no textures and no triplanar variants.
+- Projection is also a compile-time switch. No branches, no textures and no triplanar blending.
 
 ## Structure
 
@@ -171,7 +193,7 @@ A thickness of `0` disables that layer. Draw order: background → secondary →
 |---|---|---|
 | `grid-tsl` | `src/index.js` | `GridMaterial`, `GRID_DEFAULTS` |
 | `grid-tsl/debug` | `src/debug.js` | `createGridDebug` (Inspector panel + export) |
-| `grid-tsl/nodes` | `src/gridNodes.js` | Standalone TSL functions (`pixelFootprint`, `gridLines`, `filteredBand`, `crossPattern`, `radialFade`) to build your own material |
+| `grid-tsl/nodes` | `src/gridNodes.js` | Standalone TSL functions (`pixelFootprint`, `footprint`, `boxProjection`, `gridLines`, `filteredBand`, `crossPattern`, `radialFade`) to build your own material |
 
 `demo/` is the test scene; it is not part of the package.
 

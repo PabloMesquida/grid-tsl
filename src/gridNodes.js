@@ -1,5 +1,5 @@
 import {
-  Fn, vec2, float, dFdx, dFdy, length, fract, clamp, smoothstep, saturate, mix, min, max
+  Fn, vec2, float, dFdx, dFdy, length, fract, clamp, smoothstep, saturate, mix, min, max, step
 } from 'three/tsl'
 
 // Todas las funciones trabajan en "unidades de celda": coord = posición / separación,
@@ -12,11 +12,24 @@ import {
  * Se calcula por eje para que en ángulos rasantes cada dirección se filtre por separado.
  * Se calcula una sola vez y se reutiliza en todas las capas.
  */
-export const pixelFootprint = Fn(([p]) => {
-  const dx = dFdx(p)
-  const dy = dFdy(p)
+export const pixelFootprint = (p) => footprint(dFdx(p), dFdy(p))
+
+/** Huella a partir de derivadas ya calculadas (`dx` = dFdx(p), `dy` = dFdy(p)). */
+export const footprint = Fn(([dx, dy]) => {
   return max(vec2(length(vec2(dx.x, dy.x)), length(vec2(dx.y, dy.y))), 1e-6)
 })
+
+/**
+ * Proyección "box": elige el plano según el eje dominante de la normal, sin mezclar planos
+ * (caras ±Y → xz, ±X → zy, ±Z → xy). Devuelve una función que aplica esa misma elección a
+ * cualquier vec3, para proyectar la posición y sus derivadas con una única selección.
+ */
+export const boxProjection = (normal) => {
+  const n = normal.abs()
+  const onY = step(max(n.x, n.z), n.y)
+  const onX = step(n.z, n.x).mul(onY.oneMinus())
+  return (v) => mix(mix(v.xy, v.zy, onX), v.xz, onY)
+}
 
 /**
  * Líneas de rejilla filtradas (técnica "pristine grid" de Ben Golus).

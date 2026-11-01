@@ -46,6 +46,8 @@ export function createGridDebug(material, { renderer, parent, title = 'Grid', on
   const number = (folder, key, name, min, max, step) =>
     bind(folder.add(material, key, min, max, step).name(name), key)
 
+  bind(group.add(material, 'projection', ['floor', 'box']).name('projection'), 'projection')
+
   const primary = group.addFolder('Primary lines')
   color(primary, 'primaryColor')
   number(primary, 'primarySpacing', 'spacing', 0.5, 50, 0.5)
@@ -87,7 +89,7 @@ export function createGridDebug(material, { renderer, parent, title = 'Grid', on
     copyJSON: () => copy(toJSON(material.getParameters()), jsonButton, 'Copy as JSON'),
     log: () => console.log(material.getParameters()),
     reset: () => {
-      material.setParameters(GRID_DEFAULTS)
+      material.setParameters({ ...GRID_DEFAULTS, projection: material.projection })
       refresh()
     },
   }

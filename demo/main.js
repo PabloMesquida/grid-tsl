@@ -44,12 +44,33 @@ const floor = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), material)
 floor.rotation.x = -Math.PI / 2
 scene.add(floor)
 
+// Cubo con proyección 'box': cada cara recibe su propia rejilla y la rejilla sigue al objeto.
+// Oculto por defecto; se muestra desde el panel (Scene → show box).
+const boxMaterial = new GridMaterial({
+  projection: 'box',
+  backgroundColor: '#1a1c21',
+  primarySpacing: 1,
+  secondarySpacing: 0.25,
+  secondaryThickness: 0.006,
+  crossSpacing: 0.5,
+  crossSize: 0.08,
+  crossThickness: 0.008,
+  primaryThickness: 0.02,
+})
+const box = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), boxMaterial)
+box.position.set(0, 1, 0)
+box.visible = false
+scene.add(box)
+
 if (debug) {
   // Import dinámico: el Inspector y el panel no se cargan fuera del modo debug
   const { createGridDebug } = await import('grid-tsl/debug')
-  createGridDebug(material, { renderer })
+  createGridDebug(material, { renderer, title: 'Floor grid' })
+  createGridDebug(boxMaterial, { renderer, title: 'Box grid' })
 
-  renderer.inspector.createParameters('Scene').addColor(scene, 'background').name('background')
+  const sceneParams = renderer.inspector.createParameters('Scene')
+  sceneParams.addColor(scene, 'background').name('background')
+  sceneParams.add(box, 'visible').name('show box')
 }
 
 window.addEventListener('resize', () => {

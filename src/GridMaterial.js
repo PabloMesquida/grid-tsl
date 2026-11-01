@@ -1,9 +1,15 @@
 import { NodeMaterial, Color, Vector2 } from 'three/webgpu'
-import { uniform, positionWorld, mix } from 'three/tsl'
-import { pixelFootprint, gridLines, crossPattern, unionAxes, radialFade } from './gridNodes.js'
+import { uniform, positionWorld, positionLocal, normalLocal, modelScale, mix, dFdx, dFdy } from 'three/tsl'
+import {
+  pixelFootprint, footprint, boxProjection, gridLines, crossPattern, unionAxes, radialFade
+} from './gridNodes.js'
+
+const PROJECTIONS = ['floor', 'box']
 
 // Valores iniciales. Ningún color está fijado en el shader: todo llega por uniforms.
 export const GRID_DEFAULTS = {
+  projection: 'floor',
+
   backgroundColor: '#101114',
 
   primaryColor: '#5c6370',
@@ -34,8 +40,7 @@ const SCALAR_KEYS = [
 ]
 
 /**
- * Material de rejilla procedural para suelos (plano XZ en espacio de mundo).
- * Capas, de abajo arriba: fondo → líneas secundarias → cruces → líneas principales.
+ * Material de rejilla procedural. Capas, de abajo arriba: fondo → líneas secundarias → cruces → líneas principales.
  *
  * Las magnitudes derivadas (1/separación, grosor y tamaño relativos a la celda, radios de
  * fundido) se calculan en CPU al cambiar un parámetro, así el shader solo multiplica.
@@ -69,10 +74,28 @@ export class GridMaterial extends NodeMaterial {
 
     this._values = Object.fromEntries(SCALAR_KEYS.map((key) => [key, GRID_DEFAULTS[key]]))
     this._fade = false
+    this._projection = null
+    this._fadeNode = radialFade(positionWorld.xz, u.fadeCenter, u.fadeInner, u.fadeOuter)
 
-    // --- Grafo de nodos ---------------------------------------------------------------
-    const p = positionWorld.xz
-    const fp = pixelFootprint(p)   // una sola evaluación de derivadas para todo el material
+    this.setParameters({ ...GRID_DEFAULTS, ...params })
+  }
+
+  // --- Grafo de nodos -----------------------------------------------------------------
+  _buildColorNode() {
+    const u = this._uniforms
+    let p, fp
+
+    if (this._projection === 'box') {
+      // Espacio local escalado: la rejilla sigue al objeto pero mantiene unidades de mundo.
+      // Las derivadas se toman sobre la posición 3D (continua) y se proyectan igual que ella.
+      const pos = positionLocal.mul(modelScale)
+      const project = boxProjection(normalLocal)
+      p = project(pos)
+      fp = footprint(project(dFdx(pos)), project(dFdy(pos)))
+    } else {
+      p = positionWorld.xz
+      fp = pixelFootprint(p)   // una sola evaluación de derivadas para todo el material
+    }
 
     const primary = unionAxes(gridLines(p.mul(u.primaryScale), u.primaryWidth, fp.mul(u.primaryScale)))
     const secondary = unionAxes(gridLines(p.mul(u.secondaryScale), u.secondaryWidth, fp.mul(u.secondaryScale)))
@@ -83,10 +106,7 @@ export class GridMaterial extends NodeMaterial {
     color = mix(color, u.crossColor, cross)
     color = mix(color, u.primaryColor, primary)
 
-    this.colorNode = color
-    this._fadeNode = radialFade(p, u.fadeCenter, u.fadeInner, u.fadeOuter)
-
-    this.setParameters({ ...GRID_DEFAULTS, ...params })
+    return color
   }
 
   /** Asigna varios parámetros a la vez. */
@@ -111,6 +131,18 @@ export class GridMaterial extends NodeMaterial {
       else params[key] = this[key]
     }
     return params
+  }
+
+  // --- Proyección -----------------------------------------------------------------------
+  // 'floor': plano XZ del mundo (suelos). 'box': cada cara usa el plano de su eje dominante,
+  // en el espacio del objeto (cubos, paredes). Cambiarla recompila el material.
+  get projection() { return this._projection }
+  set projection(value) {
+    if (!PROJECTIONS.includes(value)) throw new Error(`GridMaterial: unknown projection '${value}'`)
+    if (value === this._projection) return
+    this._projection = value
+    this.colorNode = this._buildColorNode()
+    this.needsUpdate = true
   }
 
   // --- Fundido circular -----------------------------------------------------------------
