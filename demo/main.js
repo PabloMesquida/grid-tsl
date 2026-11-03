@@ -27,6 +27,8 @@ if (!renderer.backend.isWebGPUBackend) {
 }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFShadowMap
 
 const scene = new THREE.Scene()
 scene.background = new THREE.Color('#0b0c0f')
@@ -38,10 +40,19 @@ const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
 controls.maxPolarAngle = Math.PI * 0.495
 
+// Luces: el material no se ilumina, pero con receiveShadows recoge la sombra de la direccional
+const sun = new THREE.DirectionalLight('#ffffff', 2)
+sun.position.set(6, 10, 4)
+sun.castShadow = true
+sun.shadow.mapSize.set(2048, 2048)
+Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 0.5, far: 40 })
+scene.add(sun, new THREE.HemisphereLight('#ffffff', '#444444', 1))
+
 // Suelo
-const material = new GridMaterial()
+const material = new GridMaterial({ receiveShadows: true })
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), material)
 floor.rotation.x = -Math.PI / 2
+floor.receiveShadow = true
 scene.add(floor)
 
 // Cubo con proyección 'box': cada cara recibe su propia rejilla y la rejilla sigue al objeto.
@@ -56,10 +67,14 @@ const boxMaterial = new GridMaterial({
   crossSize: 0.08,
   crossThickness: 0.008,
   primaryThickness: 0.02,
+  faceShading: 0.35,
+  receiveShadows: true,
 })
 const box = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), boxMaterial)
 box.position.set(0, 1, 0)
 box.visible = false
+box.castShadow = true
+box.receiveShadow = true
 scene.add(box)
 
 if (debug) {

@@ -27,6 +27,9 @@ Version 2 is a rewrite from scratch. v1 is still available under the
 
 ### Changelog
 
+- **2.3.0**: `receiveShadows` (with `shadowColor` / `shadowIntensity`) so the grid shows shadows
+  without becoming a lit material, and `faceShading` to darken faces that don't point up. The demo has a
+  shadow-casting directional light.
 - **2.2.0**: `projection: 'box'` to use the grid on cubes, walls and other boxy meshes. The demo has a box (hidden by default, toggle it in Scene → show box).
 - **2.1.1**: debug panel labels in English; the export buttons now live in an **Export** folder.
 - **2.1.0**: the debug panel uses the built-in three.js Inspector instead of lil-gui, so lil-gui is no
@@ -40,7 +43,7 @@ There are no other dependencies: the debug panel uses the Inspector that ships w
 (`three/addons/inspector`).
 
 ```bash
-npm install github:PabloMesquida/grid-tsl#v2.2.0
+npm install github:PabloMesquida/grid-tsl#v2.3.0
 ```
 
 Or from a local copy of the repository, by packing it:
@@ -50,7 +53,7 @@ npm pack
 ```
 
 ```bash
-npm install path/to/grid-tsl-2.2.0.tgz
+npm install path/to/grid-tsl-2.3.0.tgz
 ```
 
 > Avoid `npm link` or `file:../grid`: they create a symlink and the package would end up using its own
@@ -93,6 +96,29 @@ will see seams where the dominant axis changes. The fade is always measured in w
 boxes fade out together.
 
 Changing `projection` recompiles the material.
+
+### Shading and shadows
+
+`GridMaterial` is unlit: its colors are exactly the ones you set. Two options add depth without turning
+it into a lit material:
+
+- **`faceShading`** (0–1): darkens faces that don't point up (walls, slopes) by that fraction, so a box
+  doesn't look flat. It doesn't depend on any light.
+- **`receiveShadows`**: the grid picks up the shadow mask of the scene's shadow-casting lights and blends
+  towards `shadowColor` by `shadowIntensity`. Like three's `ShadowMaterial`, it never lights the
+  surface: other lights (hemisphere, ambient…) don't change it. The mesh also needs `receiveShadow`.
+
+```js
+renderer.shadowMap.enabled = true
+sun.castShadow = true
+
+const material = new GridMaterial({ receiveShadows: true, shadowIntensity: 0.4 })
+floor.receiveShadow = true
+box.castShadow = true            // casting needs nothing from the material
+```
+
+It works with `fade` (transparent) and with one material shared by several meshes. Toggling
+`receiveShadows` recompiles the material; with it off, the shader has no lighting code at all.
 
 ## Debug mode: edit and export parameters
 
@@ -159,6 +185,8 @@ All distances are in world units. Colors accept `'#hex'`, a number or a `THREE.C
 | `primaryColor` / `primarySpacing` / `primaryThickness` | Primary lines: color, spacing, thickness |
 | `secondaryColor` / `secondarySpacing` / `secondaryThickness` | Secondary lines: color, spacing, thickness |
 | `crossColor` / `crossSpacing` / `crossSize` / `crossThickness` | Crosses (centered in each cell): color, spacing, tip-to-tip size, thickness |
+| `faceShading` | How much faces that don't point up are darkened (0–1) |
+| `receiveShadows` / `shadowColor` / `shadowIntensity` | Show shadows from shadow-casting lights; color they blend towards; strength (0–1) |
 | `fade` | Enables the circular fade (alpha) |
 | `fadeRadius` / `fadeSoftness` | Radius where the material fully disappears; fraction of the radius taken by the transition (0–1) |
 | `fadeCenter` | Fade center in world XZ coordinates (`Vector2`, `{ x, y }` or `[x, z]`) |
@@ -185,7 +213,7 @@ A thickness of `0` disables that layer. Draw order: background → secondary →
   when a parameter changes; the shader only multiplies.
 - The fade is a compile-time switch: when disabled, the material is opaque and contains neither that code
   nor blending.
-- Projection is also a compile-time switch. No branches, no textures and no triplanar blending.
+- Projection and `receiveShadows` are also compile-time switches. No branches, no textures and no triplanar blending.
 
 ## Structure
 

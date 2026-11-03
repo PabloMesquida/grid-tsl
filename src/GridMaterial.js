@@ -1,5 +1,8 @@
-import { NodeMaterial, Color, Vector2 } from 'three/webgpu'
-import { uniform, positionWorld, positionLocal, normalLocal, modelScale, mix, dFdx, dFdy } from 'three/tsl'
+import { NodeMaterial, LightingModel, Color, Vector2 } from 'three/webgpu'
+import {
+  uniform, float, positionWorld, positionLocal, normalLocal, normalWorld, modelScale, diffuseColor,
+  mix, dFdx, dFdy
+} from 'three/tsl'
 import {
   pixelFootprint, footprint, boxProjection, gridLines, crossPattern, unionAxes, radialFade
 } from './gridNodes.js'
@@ -25,19 +28,49 @@ export const GRID_DEFAULTS = {
   crossSize: 0.2,
   crossThickness: 0.02,
 
+  faceShading: 0,
+
+  receiveShadows: false,
+  shadowColor: '#000000',
+  shadowIntensity: 0.5,
+
   fade: true,
   fadeRadius: 60,
   fadeSoftness: 0.7,
   fadeCenter: [0, 0],
 }
 
-const COLOR_KEYS = ['backgroundColor', 'primaryColor', 'secondaryColor', 'crossColor']
+const COLOR_KEYS = ['backgroundColor', 'primaryColor', 'secondaryColor', 'crossColor', 'shadowColor']
 const SCALAR_KEYS = [
   'primarySpacing', 'primaryThickness',
   'secondarySpacing', 'secondaryThickness',
   'crossSpacing', 'crossSize', 'crossThickness',
+  'faceShading', 'shadowIntensity',
   'fadeRadius', 'fadeSoftness',
 ]
+
+/**
+ * Modelo de iluminación mínimo: no ilumina, solo recoge la máscara de sombra de las luces
+ * directas (como ShadowMaskModel de three) y oscurece el color de la rejilla con ella.
+ */
+class GridShadowModel extends LightingModel {
+
+  constructor(color, intensity) {
+    super()
+    this.color = color
+    this.intensity = intensity
+    this.shadowMask = float(1).toVar('gridShadowMask')
+  }
+
+  direct({ lightNode }) {
+    if (lightNode.shadowNode !== null) this.shadowMask.mulAssign(lightNode.shadowNode)
+  }
+
+  finish({ context }) {
+    const amount = this.shadowMask.oneMinus().mul(this.intensity)
+    context.outgoingLight.rgb.assign(mix(diffuseColor.rgb, this.color, amount))
+  }
+}
 
 /**
  * Material de rejilla procedural. Capas, de abajo arriba: fondo → líneas secundarias → cruces → líneas principales.
@@ -58,6 +91,7 @@ export class GridMaterial extends NodeMaterial {
       primaryColor: uniform(new Color()),
       secondaryColor: uniform(new Color()),
       crossColor: uniform(new Color()),
+      shadowColor: uniform(new Color()),
 
       primaryScale: uniform(1),     // 1 / separación
       primaryWidth: uniform(0),     // grosor / separación
@@ -67,6 +101,9 @@ export class GridMaterial extends NodeMaterial {
       crossWidth: uniform(0),
       crossLength: uniform(0),      // tamaño / separación
 
+      faceShading: uniform(0),
+      shadowIntensity: uniform(0),
+
       fadeCenter: uniform(new Vector2()),
       fadeInner: uniform(0),
       fadeOuter: uniform(1),
@@ -74,6 +111,7 @@ export class GridMaterial extends NodeMaterial {
 
     this._values = Object.fromEntries(SCALAR_KEYS.map((key) => [key, GRID_DEFAULTS[key]]))
     this._fade = false
+    this._receiveShadows = false
     this._projection = null
     this._fadeNode = radialFade(positionWorld.xz, u.fadeCenter, u.fadeInner, u.fadeOuter)
 
@@ -106,7 +144,8 @@ export class GridMaterial extends NodeMaterial {
     color = mix(color, u.crossColor, cross)
     color = mix(color, u.primaryColor, primary)
 
-    return color
+    // Sombreado por cara barato: las caras que no miran hacia arriba se oscurecen.
+    return color.mul(u.faceShading.mul(normalWorld.y.max(0).oneMinus()).oneMinus())
   }
 
   /** Asigna varios parámetros a la vez. */
@@ -145,6 +184,28 @@ export class GridMaterial extends NodeMaterial {
     this.needsUpdate = true
   }
 
+  // --- Sombras -------------------------------------------------------------------------
+  // Interruptor de compilación: activa `lights` con un modelo que solo aplica la máscara de
+  // sombra, sin iluminar. La malla también necesita `receiveShadow = true`.
+  get receiveShadows() { return this._receiveShadows }
+  set receiveShadows(value) {
+    value = Boolean(value)
+    if (value === this._receiveShadows) return
+    this._receiveShadows = value
+    this.lights = value
+    this.needsUpdate = true
+  }
+
+  setupLightingModel() {
+    const u = this._uniforms
+    return new GridShadowModel(u.shadowColor, u.shadowIntensity)
+  }
+
+  // Con `lights` activo y sin luces en la escena, NodeMaterial devolvería negro.
+  setupOutgoingLight() {
+    return diffuseColor.rgb
+  }
+
   // --- Fundido circular -----------------------------------------------------------------
   // Es un interruptor de compilación: desactivado, el material es opaco y el shader no
   // incluye el cálculo del fundido ni el blending.
@@ -180,6 +241,9 @@ export class GridMaterial extends NodeMaterial {
     u.crossScale.value = 1 / Math.max(v.crossSpacing, 1e-4)
     u.crossWidth.value = Math.min(v.crossThickness * u.crossScale.value, 0.5)
     u.crossLength.value = Math.min(Math.max(v.crossSize, v.crossThickness) * u.crossScale.value, 1)
+
+    u.faceShading.value = Math.min(Math.max(v.faceShading, 0), 1)
+    u.shadowIntensity.value = Math.min(Math.max(v.shadowIntensity, 0), 1)
 
     const outer = Math.max(v.fadeRadius, 1e-3)
     u.fadeOuter.value = outer

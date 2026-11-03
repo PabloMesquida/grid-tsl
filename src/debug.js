@@ -64,6 +64,12 @@ export function createGridDebug(material, { renderer, parent, title = 'Grid', on
   number(cross, 'crossSize', 'size', 0, 2, 0.01)
   number(cross, 'crossThickness', 'thickness', 0, 0.2, 0.001)
 
+  const shading = group.addFolder('Shading & shadows')
+  number(shading, 'faceShading', 'face shading', 0, 1, 0.01)
+  bind(shading.add(material, 'receiveShadows').name('receive shadows'), 'receiveShadows')
+  color(shading, 'shadowColor', 'shadow color')
+  number(shading, 'shadowIntensity', 'shadow intensity', 0, 1, 0.01)
+
   const base = group.addFolder('Background & fade')
   color(base, 'backgroundColor', 'background')
   bind(base.add(material, 'fade').name('circular fade'), 'fade')

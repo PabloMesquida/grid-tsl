@@ -1,6 +1,6 @@
 {
   "name": "grid-tsl",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Procedural floor grid material for Three.js WebGPU + TSL, anti-aliased without moiré.",
   "author": "Pablo Mesquida",
   "repository": {
