@@ -1,11 +1,12 @@
 import { NodeMaterial, LightingModel, Color, Vector2 } from 'three/webgpu'
 import {
   uniform, float, positionWorld, positionLocal, normalLocal, normalWorld, modelScale, diffuseColor,
-  mix, dFdx, dFdy
+  mix, dFdx, dFdy, smoothstep, texture
 } from 'three/tsl'
 import {
-  pixelFootprint, footprint, boxProjection, gridLines, crossPattern, unionAxes, radialFade
+  footprint, boxProjection, gridLines, crossPattern, unionAxes, radialFade
 } from './gridNodes.js'
+import { getNoiseTexture, NOISE_SIZE, MOTTLE_CELLS } from './noiseTexture.js'
 
 const PROJECTIONS = ['floor', 'box']
 
@@ -34,6 +35,15 @@ export const GRID_DEFAULTS = {
   shadowColor: '#000000',
   shadowIntensity: 0.5,
 
+  matte: false,
+  grain: 0.35,
+  grainSize: 0.02,
+  mottle: 0.25,
+  mottleSize: 4,
+  lineWear: 0.6,
+  lightPool: 3,
+  lightPoolRadius: 30,
+
   fade: true,
   fadeRadius: 60,
   fadeSoftness: 0.7,
@@ -46,6 +56,7 @@ const SCALAR_KEYS = [
   'secondarySpacing', 'secondaryThickness',
   'crossSpacing', 'crossSize', 'crossThickness',
   'faceShading', 'shadowIntensity',
+  'grain', 'grainSize', 'mottle', 'mottleSize', 'lineWear', 'lightPool', 'lightPoolRadius',
   'fadeRadius', 'fadeSoftness',
 ]
 
@@ -104,6 +115,14 @@ export class GridMaterial extends NodeMaterial {
       faceShading: uniform(0),
       shadowIntensity: uniform(0),
 
+      grain: uniform(0),
+      grainScale: uniform(1),       // 1 / tamaño de una repetición del grano
+      mottle: uniform(0),
+      mottleScale: uniform(1),      // 1 / tamaño de una repetición de las manchas
+      lineWear: uniform(0),
+      lightPool: uniform(0),
+      lightPoolRadius: uniform(1),
+
       fadeCenter: uniform(new Vector2()),
       fadeInner: uniform(0),
       fadeOuter: uniform(1),
@@ -112,6 +131,7 @@ export class GridMaterial extends NodeMaterial {
     this._values = Object.fromEntries(SCALAR_KEYS.map((key) => [key, GRID_DEFAULTS[key]]))
     this._fade = false
     this._receiveShadows = false
+    this._matte = false
     this._projection = null
     this._fadeNode = radialFade(positionWorld.xz, u.fadeCenter, u.fadeInner, u.fadeOuter)
 
@@ -121,7 +141,7 @@ export class GridMaterial extends NodeMaterial {
   // --- Grafo de nodos -----------------------------------------------------------------
   _buildColorNode() {
     const u = this._uniforms
-    let p, fp
+    let p, dx, dy
 
     if (this._projection === 'box') {
       // Espacio local escalado: la rejilla sigue al objeto pero mantiene unidades de mundo.
@@ -129,17 +149,44 @@ export class GridMaterial extends NodeMaterial {
       const pos = positionLocal.mul(modelScale)
       const project = boxProjection(normalLocal)
       p = project(pos)
-      fp = footprint(project(dFdx(pos)), project(dFdy(pos)))
+      dx = project(dFdx(pos))
+      dy = project(dFdy(pos))
     } else {
       p = positionWorld.xz
-      fp = pixelFootprint(p)   // una sola evaluación de derivadas para todo el material
+      dx = dFdx(p)
+      dy = dFdy(p)
     }
 
-    const primary = unionAxes(gridLines(p.mul(u.primaryScale), u.primaryWidth, fp.mul(u.primaryScale)))
-    const secondary = unionAxes(gridLines(p.mul(u.secondaryScale), u.secondaryWidth, fp.mul(u.secondaryScale)))
-    const cross = crossPattern(p.mul(u.crossScale), u.crossWidth, u.crossLength, fp.mul(u.crossScale))
+    const fp = footprint(dx, dy)   // una sola evaluación de la huella para todo el material
+
+    let primary = unionAxes(gridLines(p.mul(u.primaryScale), u.primaryWidth, fp.mul(u.primaryScale)))
+    let secondary = unionAxes(gridLines(p.mul(u.secondaryScale), u.secondaryWidth, fp.mul(u.secondaryScale)))
+    let cross = crossPattern(p.mul(u.crossScale), u.crossWidth, u.crossLength, fp.mul(u.crossScale))
 
     let color = u.backgroundColor
+
+    if (this._matte) {
+      // Con gradientes explícitos los mipmaps tampoco saltan en las aristas de la proyección 'box'.
+      const noise = getNoiseTexture()
+      const sampleNoise = (scale) => texture(noise, p.mul(scale)).grad(dx.mul(scale), dy.mul(scale))
+      const grain = sampleNoise(u.grainScale).r
+      const mottle = sampleNoise(u.mottleScale).g
+
+      // El desgaste reutiliza las manchas: las zonas claras y las líneas gastadas coinciden.
+      const lines = mix(float(1), smoothstep(0.3, 0.7, mottle), u.lineWear)
+      primary = primary.mul(lines)
+      secondary = secondary.mul(lines)
+      cross = cross.mul(lines)
+
+      // Solo se modula el fondo, para que la luz no queme las líneas. Las variaciones están
+      // centradas en 1: de lejos el ruido vale 0.5 y el color medio no cambia.
+      const light = radialFade(positionWorld.xz, u.fadeCenter, float(0), u.lightPoolRadius)
+      color = color
+        .mul(grain.sub(0.5).mul(u.grain).mul(2).add(1))
+        .mul(mottle.sub(0.5).mul(u.mottle).mul(2).add(1))
+        .mul(light.mul(u.lightPool).add(1))
+    }
+
     color = mix(color, u.secondaryColor, secondary)
     color = mix(color, u.crossColor, cross)
     color = mix(color, u.primaryColor, primary)
@@ -180,6 +227,18 @@ export class GridMaterial extends NodeMaterial {
     if (!PROJECTIONS.includes(value)) throw new Error(`GridMaterial: unknown projection '${value}'`)
     if (value === this._projection) return
     this._projection = value
+    this.colorNode = this._buildColorNode()
+    this.needsUpdate = true
+  }
+
+  // --- Superficie mate ---------------------------------------------------------------------
+  // Interruptor de compilación: añade grano, manchas, desgaste de líneas y una zona de luz.
+  // Desactivado, el shader no incluye nada de esto ni usa la textura de ruido.
+  get matte() { return this._matte }
+  set matte(value) {
+    value = Boolean(value)
+    if (value === this._matte) return
+    this._matte = value
     this.colorNode = this._buildColorNode()
     this.needsUpdate = true
   }
@@ -244,6 +303,14 @@ export class GridMaterial extends NodeMaterial {
 
     u.faceShading.value = Math.min(Math.max(v.faceShading, 0), 1)
     u.shadowIntensity.value = Math.min(Math.max(v.shadowIntensity, 0), 1)
+
+    u.grain.value = Math.min(Math.max(v.grain, 0), 1)
+    u.grainScale.value = 1 / (Math.max(v.grainSize, 1e-4) * NOISE_SIZE)
+    u.mottle.value = Math.min(Math.max(v.mottle, 0), 1)
+    u.mottleScale.value = 1 / (Math.max(v.mottleSize, 1e-4) * MOTTLE_CELLS)
+    u.lineWear.value = Math.min(Math.max(v.lineWear, 0), 1)
+    u.lightPool.value = Math.max(v.lightPool, 0)
+    u.lightPoolRadius.value = Math.max(v.lightPoolRadius, 1e-3)
 
     const outer = Math.max(v.fadeRadius, 1e-3)
     u.fadeOuter.value = outer

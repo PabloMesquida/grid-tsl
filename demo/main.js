@@ -86,6 +86,23 @@ if (debug) {
   const sceneParams = renderer.inspector.createParameters('Scene')
   sceneParams.addColor(scene, 'background').name('background')
   sceneParams.add(box, 'visible').name('show box')
+
+  // Sombra difusa: es un ajuste del renderer y la luz, no del material. Solo cuesta si se activa.
+  // El desenfoque cuesta según el área del mapa y, ya borroso, 1024 no pierde detalle frente a 2048.
+  const softShadows = {
+    enabled: false,
+    radius: 12,   // en texels del mapa de sombras
+    apply() {
+      renderer.shadowMap.type = this.enabled ? THREE.VSMShadowMap : THREE.PCFShadowMap
+      sun.shadow.mapSize.setScalar(this.enabled ? 1024 : 2048)
+      sun.shadow.radius = this.enabled ? this.radius : 1
+      sun.shadow.blurSamples = this.enabled ? 16 : 8
+      material.needsUpdate = true       // el tipo de sombra forma parte del shader
+      boxMaterial.needsUpdate = true
+    },
+  }
+  sceneParams.add(softShadows, 'enabled').name('soft shadows').onChange(() => softShadows.apply())
+  sceneParams.add(softShadows, 'radius', 1, 30, 1).name('shadow softness').onChange(() => softShadows.apply())
 }
 
 window.addEventListener('resize', () => {

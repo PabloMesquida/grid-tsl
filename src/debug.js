@@ -70,6 +70,16 @@ export function createGridDebug(material, { renderer, parent, title = 'Grid', on
   color(shading, 'shadowColor', 'shadow color')
   number(shading, 'shadowIntensity', 'shadow intensity', 0, 1, 0.01)
 
+  const matte = group.addFolder('Matte surface')
+  bind(matte.add(material, 'matte').name('enabled'), 'matte')
+  number(matte, 'grain', 'grain', 0, 1, 0.01)
+  number(matte, 'grainSize', 'grain size', 0.002, 0.2, 0.001)
+  number(matte, 'mottle', 'mottle', 0, 1, 0.01)
+  number(matte, 'mottleSize', 'mottle size', 0.5, 30, 0.1)
+  number(matte, 'lineWear', 'line wear', 0, 1, 0.01)
+  number(matte, 'lightPool', 'light pool', 0, 10, 0.01)
+  number(matte, 'lightPoolRadius', 'light radius', 1, 200, 1)
+
   const base = group.addFolder('Background & fade')
   color(base, 'backgroundColor', 'background')
   bind(base.add(material, 'fade').name('circular fade'), 'fade')

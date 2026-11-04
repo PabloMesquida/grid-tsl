@@ -27,6 +27,8 @@ Version 2 is a rewrite from scratch. v1 is still available under the
 
 ### Changelog
 
+- **2.4.0**: optional `matte` surface (off by default): grain, mottling, worn lines and a pool of light,
+  so the floor looks rough instead of flat. The demo adds a soft shadows toggle (Scene → soft shadows).
 - **2.3.0**: `receiveShadows` (with `shadowColor` / `shadowIntensity`) so the grid shows shadows
   without becoming a lit material, and `faceShading` to darken faces that don't point up. The demo has a
   shadow-casting directional light.
@@ -43,7 +45,7 @@ There are no other dependencies: the debug panel uses the Inspector that ships w
 (`three/addons/inspector`).
 
 ```bash
-npm install github:PabloMesquida/grid-tsl#v2.3.0
+npm install github:PabloMesquida/grid-tsl#v2.4.0
 ```
 
 Or from a local copy of the repository, by packing it:
@@ -53,7 +55,7 @@ npm pack
 ```
 
 ```bash
-npm install path/to/grid-tsl-2.3.0.tgz
+npm install path/to/grid-tsl-2.4.0.tgz
 ```
 
 > Avoid `npm link` or `file:../grid`: they create a symlink and the package would end up using its own
@@ -119,6 +121,44 @@ box.castShadow = true            // casting needs nothing from the material
 
 It works with `fade` (transparent) and with one material shared by several meshes. Toggling
 `receiveShadows` recompiles the material; with it off, the shader has no lighting code at all.
+
+### Matte surface
+
+`matte: true` makes the floor look rough without turning it into a lit material. It is off by default.
+
+```js
+const material = new GridMaterial({ matte: true, grain: 0.35, lightPool: 3 })
+```
+
+- **`grain`** / **`grainSize`**: fine noise on the background. Size is one grain, in world units.
+- **`mottle`** / **`mottleSize`**: large, soft tonal patches on the background.
+- **`lineWear`** (0–1): lines fade out in patches, following the mottling. It works even with `mottle: 0`.
+- **`lightPool`** / **`lightPoolRadius`**: brightens the background around `fadeCenter`. `lightPool` is the
+  extra brightness at the center (`3` means ×4); it reaches none at the radius.
+
+These only change the background, so a pool of light doesn't burn out the lines. Because the pool makes the
+background brighter, lines with a similar color can disappear near the center: `secondaryColor` is the
+first one to adjust. For a look with only a few long lines, also set `secondaryThickness` and
+`crossThickness` to `0`.
+
+The noise comes from a small texture (256×256, two channels) generated in code the first time it's needed
+and shared by all materials. Its mipmaps average out to the base color, so the grain fades smoothly in the
+distance instead of causing moiré. With `'box'` projection, every face gets the same noise pattern.
+
+Toggling `matte` recompiles the material; with it off, the shader doesn't include any of this.
+
+A very blurred shadow, like the one a matte floor usually has, is a renderer and light setting rather than
+a material option. The demo's **Scene → soft shadows** toggle does this:
+
+```js
+renderer.shadowMap.type = THREE.VSMShadowMap
+sun.shadow.mapSize.set(1024, 1024)
+sun.shadow.radius = 12        // in shadow map texels
+sun.shadow.blurSamples = 16
+```
+
+It costs noticeably more than the rest of this section: two extra blur passes over the shadow map on every
+frame. It looks right on floors, but shadowed box faces can show a soft bright band near their top edge.
 
 ## Debug mode: edit and export parameters
 
@@ -187,6 +227,11 @@ All distances are in world units. Colors accept `'#hex'`, a number or a `THREE.C
 | `crossColor` / `crossSpacing` / `crossSize` / `crossThickness` | Crosses (centered in each cell): color, spacing, tip-to-tip size, thickness |
 | `faceShading` | How much faces that don't point up are darkened (0–1) |
 | `receiveShadows` / `shadowColor` / `shadowIntensity` | Show shadows from shadow-casting lights; color they blend towards; strength (0–1) |
+| `matte` | Enables the matte surface (see [Matte surface](#matte-surface)) |
+| `grain` / `grainSize` | Grain strength (0–1); size of one grain |
+| `mottle` / `mottleSize` | Tonal patches: strength (0–1); size of one patch |
+| `lineWear` | How much the lines fade out in patches (0–1) |
+| `lightPool` / `lightPoolRadius` | Extra background brightness at `fadeCenter`; radius where it reaches none |
 | `fade` | Enables the circular fade (alpha) |
 | `fadeRadius` / `fadeSoftness` | Radius where the material fully disappears; fraction of the radius taken by the transition (0–1) |
 | `fadeCenter` | Fade center in world XZ coordinates (`Vector2`, `{ x, y }` or `[x, z]`) |
@@ -213,7 +258,9 @@ A thickness of `0` disables that layer. Draw order: background → secondary →
   when a parameter changes; the shader only multiplies.
 - The fade is a compile-time switch: when disabled, the material is opaque and contains neither that code
   nor blending.
-- Projection and `receiveShadows` are also compile-time switches. No branches, no textures and no triplanar blending.
+- Projection, `receiveShadows` and `matte` are also compile-time switches. No branches and no triplanar blending.
+- No textures, unless `matte` is on: it adds two lookups into a small noise texture, with no measurable
+  difference in frame time on an integrated GPU (Intel Xe) at 4K.
 
 ## Structure
 
